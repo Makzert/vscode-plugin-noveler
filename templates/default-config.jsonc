@@ -139,6 +139,23 @@
       "enabled": false
     },
 
+    // ==================== AI 写作 ====================
+    // OpenAI 兼容接口配置
+    "ai": {
+      // 例如：https://api.openai.com/v1
+      "baseUrl": "https://api.openai.com/v1",
+      "apiKey": "",
+      "model": "gpt-4.1-mini",
+      "models": {
+        "high": "gpt-4.1",
+        "medium": "gpt-4.1-mini",
+        "low": "gpt-4.1-nano"
+      },
+      "temperature": 0.8,
+      "maxTokens": 4000,
+      "timeoutMs": 60000
+    },
+
     // ==================== 全局人物列表 ====================
     // 已弃用：推荐使用 characters/ 目录管理人物
     // 此配置项将在未来版本移除

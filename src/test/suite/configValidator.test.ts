@@ -239,6 +239,59 @@ suite('ConfigValidator Test Suite', () => {
             });
         });
 
+        suite('ai config validation', () => {
+            test('should pass for valid ai config', () => {
+                const config: NovelConfig = {
+                    ai: {
+                        baseUrl: 'https://api.openai.com/v1',
+                        apiKey: 'test-key',
+                        model: 'gpt-4.1-mini',
+                        temperature: 0.8,
+                        maxTokens: 4000
+                    }
+                };
+                const errors = validateConfig(config);
+                const aiErrors = errors.filter(e => e.field.startsWith('ai.'));
+                assert.strictEqual(aiErrors.length, 0);
+            });
+
+            test('should error for non-string ai model', () => {
+                const config = {
+                    ai: {
+                        model: 123
+                    }
+                } as unknown as NovelConfig;
+                const errors = validateConfig(config);
+                const error = errors.find(e => e.field === 'ai.model');
+                assert.ok(error);
+                assert.strictEqual(error!.severity, 'error');
+            });
+
+            test('should warn for ai temperature out of range', () => {
+                const config: NovelConfig = {
+                    ai: {
+                        temperature: 3
+                    }
+                };
+                const errors = validateConfig(config);
+                const warning = errors.find(e => e.field === 'ai.temperature');
+                assert.ok(warning);
+                assert.strictEqual(warning!.severity, 'warning');
+            });
+
+            test('should error for non-positive ai maxTokens', () => {
+                const config: NovelConfig = {
+                    ai: {
+                        maxTokens: 0
+                    }
+                };
+                const errors = validateConfig(config);
+                const error = errors.find(e => e.field === 'ai.maxTokens');
+                assert.ok(error);
+                assert.strictEqual(error!.severity, 'error');
+            });
+        });
+
         suite('Empty and minimal configs', () => {
             test('should pass for empty config', () => {
                 const config: NovelConfig = {};
@@ -331,6 +384,29 @@ suite('ConfigValidator Test Suite', () => {
                 };
                 const fixed = fixConfig(config);
                 assert.strictEqual(fixed.autoUpdateReadmeOnCreate!.value, 'never');
+            });
+        });
+
+        suite('ai config fixes', () => {
+            test('should fix invalid ai fields to defaults', () => {
+                const config = {
+                    ai: {
+                        baseUrl: 123,
+                        apiKey: false,
+                        model: {},
+                        temperature: 'bad',
+                        maxTokens: -1,
+                        timeoutMs: 0
+                    }
+                } as unknown as NovelConfig;
+                const fixed = fixConfig(config);
+
+                assert.strictEqual(fixed.ai!.baseUrl, 'https://api.openai.com/v1');
+                assert.strictEqual(fixed.ai!.apiKey, '');
+                assert.strictEqual(fixed.ai!.model, 'gpt-4.1-mini');
+                assert.strictEqual(fixed.ai!.temperature, 0.8);
+                assert.strictEqual(fixed.ai!.maxTokens, 4000);
+                assert.strictEqual(fixed.ai!.timeoutMs, 60000);
             });
         });
 

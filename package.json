@@ -188,9 +188,80 @@
         "command": "noveler.chooseMatchAtCursor",
         "title": "Noveler: 选择当前位置关键词匹配",
         "icon": "$(symbol-misc)"
+      },
+      {
+        "command": "noveler.ai.test",
+        "title": "Noveler: AI 测试生成",
+        "icon": "$(beaker)"
+      },
+      {
+        "command": "noveler.generate.outline",
+        "title": "Noveler: 生成 AI 大纲",
+        "icon": "$(book)"
+      },
+      {
+        "command": "noveler.generate.chapterDraft",
+        "title": "Noveler: 生成 AI 章节草稿",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "noveler.openAIAssistant",
+        "title": "Noveler: 打开 AI 写作助手",
+        "icon": "$(wand)"
+      },
+      {
+        "command": "noveler.ai.generateFromEditor",
+        "title": "Noveler: 在编辑器中生成 AI 结果"
+      },
+      {
+        "command": "noveler.ai.applyInsert",
+        "title": "Noveler: 应用 AI 结果（插入）"
+      },
+      {
+        "command": "noveler.ai.applyReplace",
+        "title": "Noveler: 应用 AI 结果（替换）"
+      },
+      {
+        "command": "noveler.ai.applyAppend",
+        "title": "Noveler: 应用 AI 结果（追加）"
+      },
+      {
+        "command": "noveler.ai.setPromptFromSelection",
+        "title": "Noveler: 将选中文本设为 AI 提示"
+      },
+      {
+        "command": "noveler.ai.clearPrompt",
+        "title": "Noveler: 清空 AI 提示"
+      },
+      {
+        "command": "noveler.ai.cycleMode",
+        "title": "Noveler: 切换 AI 模式"
+      },
+      {
+        "command": "noveler.ai.cycleTarget",
+        "title": "Noveler: 切换 AI 应用目标"
+      },
+      {
+        "command": "noveler.ai.discardPreview",
+        "title": "Noveler: 丢弃 AI 预览"
+      },
+      {
+        "command": "noveler.ai.showDiff",
+        "title": "Noveler: 查看 AI 预览 Diff"
+      },
+      {
+        "command": "noveler.ai.syncCharactersCurrentChapter",
+        "title": "Noveler: 同步本章人物"
       }
     ],
     "menus": {
+      "editor/title": [
+        {
+          "command": "noveler.openAIAssistant",
+          "when": "editorLangId == markdown",
+          "group": "navigation@9"
+        }
+      ],
       "editor/context": [
         {
           "command": "noveler.formatDocument",
@@ -221,6 +292,11 @@
           "command": "noveler.chooseMatchAtCursor",
           "when": "editorLangId == markdown",
           "group": "noveler@6"
+        },
+        {
+          "command": "noveler.ai.test",
+          "when": "editorLangId == markdown",
+          "group": "noveler@7"
         }
       ],
       "view/item/context": [
@@ -320,9 +396,88 @@
         {
           "id": "novelerView",
           "name": "小说项目"
+        },
+        {
+          "id": "novelerAIView",
+          "name": "AI 写作助手",
+          "type": "webview"
         }
       ]
     },
+    "keybindings": [
+      {
+        "command": "noveler.openAIAssistant",
+        "key": "ctrl+alt+a",
+        "mac": "cmd+alt+a",
+        "when": "editorTextFocus && editorLangId == markdown"
+      },
+      {
+        "command": "noveler.ai.generateFromEditor",
+        "key": "ctrl+alt+enter",
+        "mac": "cmd+alt+enter",
+        "when": "editorTextFocus && editorLangId == markdown"
+      },
+      {
+        "command": "noveler.ai.applyInsert",
+        "key": "ctrl+alt+i",
+        "mac": "cmd+alt+i",
+        "when": "editorTextFocus && editorLangId == markdown"
+      },
+      {
+        "command": "noveler.ai.applyReplace",
+        "key": "ctrl+alt+r",
+        "mac": "cmd+alt+r",
+        "when": "editorTextFocus && editorLangId == markdown"
+      },
+      {
+        "command": "noveler.ai.applyAppend",
+        "key": "ctrl+alt+p",
+        "mac": "cmd+alt+p",
+        "when": "editorTextFocus && editorLangId == markdown"
+      },
+      {
+        "command": "noveler.ai.setPromptFromSelection",
+        "key": "ctrl+alt+s",
+        "mac": "cmd+alt+s",
+        "when": "editorTextFocus && editorLangId == markdown && editorHasSelection"
+      },
+      {
+        "command": "noveler.ai.clearPrompt",
+        "key": "ctrl+alt+backspace",
+        "mac": "cmd+alt+backspace",
+        "when": "editorTextFocus && editorLangId == markdown"
+      },
+      {
+        "command": "noveler.ai.cycleMode",
+        "key": "ctrl+alt+m",
+        "mac": "cmd+alt+m",
+        "when": "editorTextFocus && editorLangId == markdown"
+      },
+      {
+        "command": "noveler.ai.cycleTarget",
+        "key": "ctrl+alt+t",
+        "mac": "cmd+alt+t",
+        "when": "editorTextFocus && editorLangId == markdown"
+      },
+      {
+        "command": "noveler.ai.discardPreview",
+        "key": "ctrl+alt+d",
+        "mac": "cmd+alt+d",
+        "when": "editorTextFocus && editorLangId == markdown"
+      },
+      {
+        "command": "noveler.ai.showDiff",
+        "key": "ctrl+alt+/",
+        "mac": "cmd+alt+/",
+        "when": "editorTextFocus && editorLangId == markdown"
+      },
+      {
+        "command": "noveler.ai.syncCharactersCurrentChapter",
+        "key": "ctrl+alt+k",
+        "mac": "cmd+alt+k",
+        "when": "editorTextFocus && editorLangId == markdown"
+      }
+    ],
     "themes": [
       {
         "label": "Noveler 护眼模式",
@@ -348,7 +503,7 @@
     "@types/mocha": "^10.0.10",
     "@types/node": "^18.0.0",
     "@types/sinon": "^21.0.0",
-    "@types/vscode": "^1.74.0",
+    "@types/vscode": "^1.74.0", 
     "@typescript-eslint/eslint-plugin": "^5.0.0",
     "@typescript-eslint/parser": "^5.0.0",
     "@vscode/test-electron": "^2.5.2",

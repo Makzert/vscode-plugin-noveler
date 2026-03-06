@@ -18,7 +18,12 @@ import { VolumeInfo } from '../types/volume';
 /**
  * 创建新章节
  */
-export async function createChapter(chapterName: string): Promise<void> {
+export async function createChapter(
+    chapterName: string,
+    options?: {
+        bodyContent?: string;
+    }
+): Promise<void> {
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
     if (!workspaceFolder) {
         vscode.window.showErrorMessage('Noveler: 请先打开一个工作区');
@@ -195,7 +200,7 @@ export async function createChapter(chapterName: string): Promise<void> {
     // 确保使用配置中的 targetWords（即使模板中有值也覆盖）
     frontMatter.targetWords = targetWords;
 
-    const content = chapterTemplate?.content || "\n";
+    const content = options?.bodyContent ?? chapterTemplate?.content ?? "\n";
 
     const template = `---
 title: ${chapterTitle}

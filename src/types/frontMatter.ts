@@ -28,6 +28,7 @@ export interface ChapterFrontMatter {
  * 人物 Front Matter 接口
  */
 export interface CharacterFrontMatter {
+    name?: string;
     gender: string;
     age: string;
     appearance: string;
@@ -38,6 +39,8 @@ export interface CharacterFrontMatter {
     importance: string;
     firstAppearance: string;
     tags: string[];
+    created?: string;
+    modified?: string;
 }
 
 /**

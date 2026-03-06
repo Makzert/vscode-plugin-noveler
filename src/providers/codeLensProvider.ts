@@ -6,12 +6,16 @@ import * as vscode from 'vscode';
 import { getContentWithoutFrontMatter, extractChapterFrontMatter } from '../utils/frontMatterHelper';
 import { WordCountService } from '../services/wordCountService';
 import { getStatusDisplayName } from '../utils/statusHelper';
+import { AIInlinePreviewService } from '../services/aiInlinePreviewService';
 
 export class ChapterCodeLensProvider implements vscode.CodeLensProvider {
     private _onDidChangeCodeLenses: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();
     public readonly onDidChangeCodeLenses: vscode.Event<void> = this._onDidChangeCodeLenses.event;
 
-    constructor(private wordCountService: WordCountService) {}
+    constructor(
+        private wordCountService: WordCountService,
+        private readonly aiInlinePreviewService: AIInlinePreviewService
+    ) {}
 
     /**
      * 刷新 Code Lens
@@ -88,6 +92,21 @@ export class ChapterCodeLensProvider implements vscode.CodeLensProvider {
                     tooltip: '修正标点和格式',
                     command: 'noveler.formatDocument'
                 }));
+
+                if (this.aiInlinePreviewService.hasActivePreview(vscode.window.activeTextEditor)) {
+                    codeLenses.push(new vscode.CodeLens(range, {
+                        title: '✅ 接受 AI 预览',
+                        command: 'noveler.ai.applyInsert'
+                    }));
+                    codeLenses.push(new vscode.CodeLens(range, {
+                        title: '🗑 丢弃 AI 预览',
+                        command: 'noveler.ai.discardPreview'
+                    }));
+                    codeLenses.push(new vscode.CodeLens(range, {
+                        title: '🔍 Diff 对比',
+                        command: 'noveler.ai.showDiff'
+                    }));
+                }
 
                 // 只处理第一个标题
                 break;

@@ -102,6 +102,9 @@ export class CharacterNodesProvider {
 
     private extractCharacterRole(text: string): string {
         const frontMatter = extractFrontMatter({ getText: () => text } as vscode.TextDocument);
+        if (frontMatter.importance) {
+            return String(frontMatter.importance).trim();
+        }
         if (frontMatter.role) {
             return String(frontMatter.role).trim();
         }

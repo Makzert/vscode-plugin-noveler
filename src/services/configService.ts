@@ -26,6 +26,27 @@ export interface HighlightStyle {
  * 对应 novel.jsonc 中的 noveler 配置项
  */
 export interface NovelConfig {
+    /** AI 配置 */
+    ai?: {
+        /** OpenAI 兼容接口 baseUrl，例如 https://api.openai.com/v1 */
+        baseUrl?: string;
+        /** API Key */
+        apiKey?: string;
+        /** 默认模型名 */
+        model?: string;
+        /** 分级模型 */
+        models?: {
+            high?: string;
+            medium?: string;
+            low?: string;
+        };
+        /** 默认 temperature */
+        temperature?: number;
+        /** 默认 max tokens */
+        maxTokens?: number;
+        /** 请求超时时间 */
+        timeoutMs?: number;
+    };
     /** 目标字数配置 */
     targetWords?: {
         /** 每章默认目标字数 */
@@ -267,6 +288,14 @@ export class ConfigService {
             paragraphIndent: {
                 value: true  // 默认开启，与文档和模板保持一致
             },
+            ai: {
+                baseUrl: process.env.NOVELER_OPENAI_BASE_URL || 'https://api.openai.com/v1',
+                apiKey: process.env.NOVELER_OPENAI_API_KEY || '',
+                model: process.env.NOVELER_OPENAI_MODEL || 'gpt-4.1-mini',
+                temperature: 0.8,
+                maxTokens: 4000,
+                timeoutMs: 60000
+            },
             characters: {
                 list: []
             }
@@ -382,6 +411,33 @@ export class ConfigService {
      */
     public getTargetWords(): number {
         return this.config.targetWords?.default || 2500;
+    }
+
+    /**
+     * 获取 AI 配置
+     */
+    public getAIConfig(): {
+        baseUrl: string;
+        apiKey: string;
+        model: string;
+        models?: {
+            high?: string;
+            medium?: string;
+            low?: string;
+        };
+        temperature: number;
+        maxTokens?: number;
+        timeoutMs?: number;
+    } {
+        return {
+            baseUrl: this.config.ai?.baseUrl || process.env.NOVELER_OPENAI_BASE_URL || 'https://api.openai.com/v1',
+            apiKey: this.config.ai?.apiKey || process.env.NOVELER_OPENAI_API_KEY || '',
+            model: this.config.ai?.model || process.env.NOVELER_OPENAI_MODEL || 'gpt-4.1-mini',
+            models: this.config.ai?.models,
+            temperature: this.config.ai?.temperature ?? 0.8,
+            maxTokens: this.config.ai?.maxTokens ?? 4000,
+            timeoutMs: this.config.ai?.timeoutMs ?? 60000
+        };
     }
 
     /**

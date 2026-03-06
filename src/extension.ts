@@ -15,6 +15,7 @@ import { NovelerViewProvider } from './views/novelerViewProvider';
 import { StatsWebviewProvider } from './views/statsWebviewProvider';
 import { WelcomeWebviewProvider } from './views/welcomeWebviewProvider';
 import { PreviewWebviewProvider } from './views/previewWebviewProvider';
+import { AIAssistantViewProvider } from './views/aiAssistantViewProvider';
 import { initTemplateLoader } from './utils/templateLoader';
 import { updateFrontMatter } from './utils/frontMatterHelper';
 import { handleReadmeAutoUpdate } from './utils/readmeAutoUpdate';
@@ -25,6 +26,19 @@ import { Debouncer } from './utils/debouncer';
 import { handleError, ErrorSeverity } from './utils/errorHandler';
 import { WORD_COUNT_DEBOUNCE_DELAY, HIGHLIGHT_DEBOUNCE_DELAY, README_UPDATE_DEBOUNCE_DELAY, CHAPTERS_FOLDER, CONFIG_FILE_NAME } from './constants';
 import { Logger, LogLevel } from './utils/logger';
+import { LLMClient } from './ai/LLMClient';
+import { PromptBuilder } from './ai/PromptBuilder';
+import { ToolRegistry } from './mcp/ToolRegistry';
+import { MCPServer } from './mcp/MCPServer';
+import { OutlineAgent } from './agents/OutlineAgent';
+import { DraftAgent } from './agents/DraftAgent';
+import { AgentOrchestrator } from './mcp/AgentOrchestrator';
+import { ProjectContextService } from './context/ProjectContextService';
+import { AIResponseSanitizer } from './ai/AIResponseSanitizer';
+import { WritingAssistantService } from './ai/WritingAssistantService';
+import { CharacterSyncService } from './services/characterSyncService';
+import { ModelRouter } from './ai/ModelRouter';
+import { AIInlinePreviewService } from './services/aiInlinePreviewService';
 
 let wordCountStatusBarItem: vscode.StatusBarItem;
 let wordCountService: WordCountService;
@@ -39,6 +53,10 @@ let sensitiveWordDiagnostic: SensitiveWordDiagnosticProvider;
 let wordCountDebouncer: Debouncer;
 let highlightDebouncer: Debouncer;
 let readmeUpdateDebouncer: Debouncer;
+let llmClient: LLMClient;
+let agentOrchestrator: AgentOrchestrator;
+let characterSyncService: CharacterSyncService;
+let aiInlinePreviewService: AIInlinePreviewService;
 
 export async function activate(context: vscode.ExtensionContext) {
     // 初始化日志系统（最先执行，确保后续能记录日志）
@@ -57,6 +75,59 @@ export async function activate(context: vscode.ExtensionContext) {
         // 初始化配置服务
         configService = ConfigService.initialize();
         context.subscriptions.push(configService);
+
+        // 初始化 AI / MCP 骨架
+        llmClient = new LLMClient(() => configService.getAIConfig());
+        const promptBuilder = new PromptBuilder();
+        const modelRouter = new ModelRouter();
+        const toolRegistry = new ToolRegistry();
+        const mcpServer = new MCPServer(toolRegistry);
+        const projectContextService = new ProjectContextService();
+        const aiResponseSanitizer = new AIResponseSanitizer();
+        aiInlinePreviewService = new AIInlinePreviewService();
+        context.subscriptions.push(aiInlinePreviewService);
+        characterSyncService = new CharacterSyncService(llmClient, modelRouter);
+        mcpServer.registerTool({
+            name: 'generate_text',
+            description: '调用大模型生成文本',
+            inputSchema: {
+                type: 'object',
+                properties: {
+                    system: { type: 'string' },
+                    prompt: { type: 'string' },
+                    temperature: { type: 'number' },
+                    maxTokens: { type: 'number' }
+                },
+                required: ['system', 'prompt']
+            },
+            execute: async (args) => {
+                const input = args as {
+                    system?: string;
+                    prompt?: string;
+                    temperature?: number;
+                    maxTokens?: number;
+                };
+
+                if (!input.prompt) {
+                    throw new Error('generate_text 缺少 prompt');
+                }
+
+                return llmClient.generate(input.prompt, {
+                    systemPrompt: input.system,
+                    temperature: input.temperature,
+                    maxTokens: input.maxTokens
+                });
+            }
+        });
+        const outlineAgent = new OutlineAgent(mcpServer, promptBuilder);
+        const draftAgent = new DraftAgent(mcpServer, promptBuilder, projectContextService);
+        agentOrchestrator = new AgentOrchestrator(outlineAgent, draftAgent);
+        const writingAssistantService = new WritingAssistantService(
+            llmClient,
+            projectContextService,
+            aiResponseSanitizer,
+            modelRouter
+        );
 
         // 初始化字数统计服务（不依赖配置加载完成）
         wordCountService = new WordCountService();
@@ -85,6 +156,19 @@ export async function activate(context: vscode.ExtensionContext) {
 
         // 初始化手机预览 Webview
         const previewWebviewProvider = new PreviewWebviewProvider(context);
+        const aiAssistantViewProvider = new AIAssistantViewProvider(
+            context,
+            writingAssistantService,
+            characterSyncService,
+            aiInlinePreviewService
+        );
+        context.subscriptions.push(
+            vscode.window.registerWebviewViewProvider('novelerAIView', aiAssistantViewProvider, {
+                webviewOptions: {
+                    retainContextWhenHidden: true
+                }
+            })
+        );
 
         // 创建状态栏项
         wordCountStatusBarItem = vscode.window.createStatusBarItem(
@@ -114,13 +198,28 @@ export async function activate(context: vscode.ExtensionContext) {
             statsWebviewProvider,
             welcomeWebviewProvider,
             previewWebviewProvider,
+            aiAssistantViewProvider,
             highlightProvider,
-            updateHighlights
+            updateHighlights,
+            llmClient,
+            agentOrchestrator,
+            characterSyncService
         });
         Logger.info('[Noveler] 命令已注册');
 
         // 注册事件监听器
         registerEventListeners(context, novelerViewProvider);
+        context.subscriptions.push(
+            vscode.window.onDidChangeActiveTextEditor(async () => {
+                await aiAssistantViewProvider.refresh();
+            }),
+            vscode.window.onDidChangeTextEditorSelection(async () => {
+                await aiAssistantViewProvider.refresh();
+            }),
+            vscode.workspace.onDidOpenTextDocument(async () => {
+                await aiAssistantViewProvider.refresh();
+            })
+        );
 
         // === 以下是可以延迟加载的服务 ===
 
@@ -164,7 +263,7 @@ export async function activate(context: vscode.ExtensionContext) {
         }
 
         // 初始化 Code Lens 提供者
-        codeLensProvider = new ChapterCodeLensProvider(wordCountService);
+        codeLensProvider = new ChapterCodeLensProvider(wordCountService, aiInlinePreviewService);
         context.subscriptions.push(
             vscode.languages.registerCodeLensProvider(
                 { language: 'markdown', pattern: '**/chapters/**' },
@@ -267,7 +366,7 @@ function registerEventListeners(
 
     // 监听文档保存完成事件
     context.subscriptions.push(
-        vscode.workspace.onDidSaveTextDocument((document) => {
+        vscode.workspace.onDidSaveTextDocument(async (document) => {
             if (document.languageId === 'markdown') {
                 novelerViewProvider.refresh();
 

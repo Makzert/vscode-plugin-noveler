@@ -14,6 +14,7 @@ import { NovelerViewProvider } from '../views/novelerViewProvider';
 import { StatsWebviewProvider } from '../views/statsWebviewProvider';
 import { WelcomeWebviewProvider } from '../views/welcomeWebviewProvider';
 import { PreviewWebviewProvider } from '../views/previewWebviewProvider';
+import { AIAssistantViewProvider } from '../views/aiAssistantViewProvider';
 import { handleReadmeAutoUpdate } from '../utils/readmeAutoUpdate';
 import { initProject } from './initProject';
 import { createChapter } from './createChapter';
@@ -48,6 +49,12 @@ import { handleError, ErrorSeverity } from '../utils/errorHandler';
 import { Logger } from '../utils/logger';
 import { NovelHighlightProvider } from '../providers/highlightProvider';
 import { chooseMatchAtCursor } from './matchSelectionCommand';
+import { LLMClient } from '../ai/LLMClient';
+import { AgentOrchestrator } from '../mcp/AgentOrchestrator';
+import { runAITestCommand } from './aiTestCommand';
+import { generateOutlineCommand } from './generateOutlineCommand';
+import { generateChapterDraftCommand } from './generateChapterDraftCommand';
+import { CharacterSyncService } from '../services/characterSyncService';
 
 /**
  * 命令注册器依赖项
@@ -63,8 +70,12 @@ export interface CommandRegistrarDeps {
     statsWebviewProvider: StatsWebviewProvider;
     welcomeWebviewProvider: WelcomeWebviewProvider;
     previewWebviewProvider: PreviewWebviewProvider;
+    aiAssistantViewProvider: AIAssistantViewProvider;
     highlightProvider: NovelHighlightProvider;
     updateHighlights: (editor: vscode.TextEditor | undefined) => void;
+    llmClient: LLMClient;
+    agentOrchestrator: AgentOrchestrator;
+    characterSyncService: CharacterSyncService;
 }
 
 /**
@@ -77,6 +88,7 @@ export function registerAllCommands(deps: CommandRegistrarDeps): void {
     registerVolumeCommands(deps);
     registerSensitiveWordCommands(deps);
     registerMigrationCommands(deps);
+    registerAICommands(deps);
     registerUtilityCommands(deps);
 }
 
@@ -336,6 +348,144 @@ function registerMigrationCommands(deps: CommandRegistrarDeps): void {
     );
     context.subscriptions.push(
         vscode.commands.registerCommand('noveler.rollbackToFlatStructure', rollbackToFlatStructure)
+    );
+}
+
+/**
+ * 注册 AI 相关命令
+ */
+function registerAICommands(deps: CommandRegistrarDeps): void {
+    const { context, llmClient, agentOrchestrator, aiAssistantViewProvider, characterSyncService } = deps;
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand('noveler.ai.test', async () => {
+            await runAITestCommand(llmClient);
+        })
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand('noveler.generate.outline', async () => {
+            await generateOutlineCommand(agentOrchestrator);
+        })
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand('noveler.generate.chapterDraft', async () => {
+            await generateChapterDraftCommand(agentOrchestrator);
+        })
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand('noveler.openAIAssistant', async () => {
+            await aiAssistantViewProvider.reveal();
+        })
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand('noveler.ai.generateFromEditor', async () => {
+            await aiAssistantViewProvider.generateFromEditor();
+        })
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand('noveler.ai.applyInsert', async () => {
+            await aiAssistantViewProvider.applyLastResultToEditor('insert');
+        })
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand('noveler.ai.applyReplace', async () => {
+            await aiAssistantViewProvider.applyLastResultToEditor('replace');
+        })
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand('noveler.ai.applyAppend', async () => {
+            await aiAssistantViewProvider.applyLastResultToEditor('append');
+        })
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand('noveler.ai.setPromptFromSelection', async () => {
+            const editor = vscode.window.activeTextEditor;
+            if (!editor || editor.selection.isEmpty) {
+                vscode.window.showWarningMessage('请先在编辑器中选中一段文字，作为 AI 补充要求。');
+                return;
+            }
+
+            const prompt = editor.document.getText(editor.selection).trim();
+            await aiAssistantViewProvider.setPrompt(prompt);
+            vscode.window.showInformationMessage('已将选中文本设为 AI 补充要求。');
+        })
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand('noveler.ai.clearPrompt', async () => {
+            await aiAssistantViewProvider.clearPrompt();
+            vscode.window.showInformationMessage('已清空 AI 补充要求。');
+        })
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand('noveler.ai.cycleMode', async () => {
+            const nextMode = await aiAssistantViewProvider.cycleMode();
+            const labels: Record<string, string> = {
+                continue: '续写当前内容',
+                rewrite: '改写选区/段落',
+                expand: '扩写选区/段落',
+                polishDialogue: '润色对话',
+                summarize: '总结当前章节'
+            };
+            vscode.window.showInformationMessage(`AI 模式已切换为：${labels[nextMode]}`);
+        })
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand('noveler.ai.cycleTarget', async () => {
+            const nextTarget = await aiAssistantViewProvider.cycleTarget();
+            const labels: Record<string, string> = {
+                insert: '插入光标处',
+                replace: '替换选区/段落',
+                append: '追加到文末'
+            };
+            vscode.window.showInformationMessage(`AI 应用目标已切换为：${labels[nextTarget]}`);
+        })
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand('noveler.ai.discardPreview', async () => {
+            await aiAssistantViewProvider.discardPreview();
+            vscode.window.showInformationMessage('已丢弃当前 AI 预览。');
+        })
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand('noveler.ai.showDiff', async () => {
+            await aiAssistantViewProvider.showDiffPreview();
+        })
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand('noveler.ai.syncCharactersCurrentChapter', async () => {
+            const editor = vscode.window.activeTextEditor;
+            if (!editor || editor.document.languageId !== 'markdown' || !editor.document.uri.fsPath.includes('/chapters/')) {
+                vscode.window.showWarningMessage('请先打开 chapters/ 下的章节 Markdown 文件。');
+                return;
+            }
+
+            const summary = await characterSyncService.syncDocument(editor.document);
+            if (summary.chapterCharactersUpdated) {
+                await editor.document.save();
+            }
+
+            const parts = [
+                summary.chapterCharactersUpdated ? '已更新本章人物列表' : '',
+                summary.createdCharacters.length > 0 ? `新增人物档案 ${summary.createdCharacters.length} 个` : '',
+                summary.updatedCharacters.length > 0 ? `更新人物档案 ${summary.updatedCharacters.length} 个` : ''
+            ].filter(Boolean);
+
+            vscode.window.showInformationMessage(parts.length > 0 ? parts.join('，') : '未识别到需要同步的人物信息。');
+        })
     );
 }
 

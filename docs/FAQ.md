@@ -439,6 +439,7 @@ Front Matter 和 HTML 注释不会被格式化。
 
 - [文件格式说明](文件格式说明.md) - Front Matter 字段详解
 - [配置文档](novel-json配置说明.md) - 完整配置选项
+- [AI 写作助手使用说明](AI写作助手使用说明.md) - 快捷键、工作流、人物同步
 - [更新日志](../CHANGELOG.md) - 版本更新历史
 - [GitHub Issues](https://github.com/ChangFang911/vscode-plugin-noveler/issues) - 报告问题
 - [GitHub Discussions](https://github.com/ChangFang911/vscode-plugin-noveler/discussions) - 讨论和建议

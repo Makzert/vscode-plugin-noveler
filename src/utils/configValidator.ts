@@ -86,6 +86,65 @@ export function validateConfig(config: NovelConfig): ValidationError[] {
         }
     }
 
+    // 验证 AI 配置
+    if (config.ai) {
+        if (config.ai.baseUrl !== undefined && typeof config.ai.baseUrl !== 'string') {
+            errors.push({
+                field: 'ai.baseUrl',
+                message: 'AI baseUrl 必须是字符串',
+                severity: 'error'
+            });
+        }
+
+        if (config.ai.apiKey !== undefined && typeof config.ai.apiKey !== 'string') {
+            errors.push({
+                field: 'ai.apiKey',
+                message: 'AI apiKey 必须是字符串',
+                severity: 'error'
+            });
+        }
+
+        if (config.ai.model !== undefined && typeof config.ai.model !== 'string') {
+            errors.push({
+                field: 'ai.model',
+                message: 'AI model 必须是字符串',
+                severity: 'error'
+            });
+        }
+
+        if (config.ai.temperature !== undefined) {
+            if (typeof config.ai.temperature !== 'number' || Number.isNaN(config.ai.temperature)) {
+                errors.push({
+                    field: 'ai.temperature',
+                    message: 'AI temperature 必须是数字',
+                    severity: 'error'
+                });
+            } else if (config.ai.temperature < 0 || config.ai.temperature > 2) {
+                errors.push({
+                    field: 'ai.temperature',
+                    message: 'AI temperature 建议在 0 到 2 之间',
+                    severity: 'warning'
+                });
+            }
+        }
+
+        if (config.ai.maxTokens !== undefined) {
+            if (typeof config.ai.maxTokens !== 'number' || !Number.isFinite(config.ai.maxTokens)) {
+                errors.push({
+                    field: 'ai.maxTokens',
+                    message: 'AI maxTokens 必须是数字',
+                    severity: 'error'
+                });
+            } else if (config.ai.maxTokens <= 0) {
+                errors.push({
+                    field: 'ai.maxTokens',
+                    message: 'AI maxTokens 必须大于 0',
+                    severity: 'error'
+                });
+            }
+        }
+    }
+
     return errors;
 }
 
@@ -144,6 +203,27 @@ export function fixConfig(config: NovelConfig): NovelConfig {
         const validValues = ['always', 'ask', 'never'];
         if (!validValues.includes(fixed.autoUpdateReadmeOnCreate.value)) {
             fixed.autoUpdateReadmeOnCreate.value = 'always'; // 恢复默认值
+        }
+    }
+
+    if (fixed.ai) {
+        if (typeof fixed.ai.baseUrl !== 'string') {
+            fixed.ai.baseUrl = 'https://api.openai.com/v1';
+        }
+        if (typeof fixed.ai.apiKey !== 'string') {
+            fixed.ai.apiKey = '';
+        }
+        if (typeof fixed.ai.model !== 'string') {
+            fixed.ai.model = 'gpt-4.1-mini';
+        }
+        if (typeof fixed.ai.temperature !== 'number' || Number.isNaN(fixed.ai.temperature)) {
+            fixed.ai.temperature = 0.8;
+        }
+        if (typeof fixed.ai.maxTokens !== 'number' || fixed.ai.maxTokens <= 0) {
+            fixed.ai.maxTokens = 4000;
+        }
+        if (typeof fixed.ai.timeoutMs !== 'number' || fixed.ai.timeoutMs <= 0) {
+            fixed.ai.timeoutMs = 60000;
         }
     }
 
