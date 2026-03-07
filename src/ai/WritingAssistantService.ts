@@ -4,6 +4,7 @@ import { LLMClient } from './LLMClient';
 import { AIResponseSanitizer } from './AIResponseSanitizer';
 import { ProjectContextService } from '../context/ProjectContextService';
 import { ModelRouter } from './ModelRouter';
+import { evaluateAssistQuality } from './AssistQualityGate';
 
 export type WritingAssistantMode = 'continue' | 'rewrite' | 'expand' | 'polishDialogue' | 'summarize';
 export type WritingAssistantTarget = 'insert' | 'replace' | 'append';
@@ -106,9 +107,20 @@ export class WritingAssistantService {
             throw new Error('AI 返回内容为空，无法应用。');
         }
 
+        const quality = evaluateAssistQuality(request.mode, {
+            chapterTitle: snapshot.chapterTitle,
+            selectionText: snapshot.selectionText,
+            currentParagraph: snapshot.currentParagraph,
+            beforeCursor: snapshot.beforeCursor,
+            afterCursor: snapshot.afterCursor
+        }, sanitized.content);
+        if (!quality.accepted) {
+            throw new Error(quality.reason ?? 'AI 输出未通过质量门槛，请重试或调整提示词。');
+        }
+
         return {
             content: sanitized.content,
-            warnings: sanitized.warnings,
+            warnings: [...sanitized.warnings, ...quality.warnings],
             changed: sanitized.changed,
             mode: request.mode,
             target: request.target,

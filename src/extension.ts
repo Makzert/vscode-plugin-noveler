@@ -32,6 +32,9 @@ import { ToolRegistry } from './mcp/ToolRegistry';
 import { MCPServer } from './mcp/MCPServer';
 import { OutlineAgent } from './agents/OutlineAgent';
 import { DraftAgent } from './agents/DraftAgent';
+import { MultiDraftGenerator } from './agents/MultiDraftGenerator';
+import { EvaluatorAgent } from './agents/EvaluatorAgent';
+import { RewriteAgent } from './agents/RewriteAgent';
 import { AgentOrchestrator } from './mcp/AgentOrchestrator';
 import { ProjectContextService } from './context/ProjectContextService';
 import { AIResponseSanitizer } from './ai/AIResponseSanitizer';
@@ -121,7 +124,16 @@ export async function activate(context: vscode.ExtensionContext) {
         });
         const outlineAgent = new OutlineAgent(mcpServer, promptBuilder);
         const draftAgent = new DraftAgent(mcpServer, promptBuilder, projectContextService);
-        agentOrchestrator = new AgentOrchestrator(outlineAgent, draftAgent);
+        const multiDraftGenerator = new MultiDraftGenerator(mcpServer, promptBuilder);
+        const evaluatorAgent = new EvaluatorAgent(mcpServer, promptBuilder);
+        const rewriteAgent = new RewriteAgent(mcpServer, promptBuilder);
+        agentOrchestrator = new AgentOrchestrator(
+            outlineAgent,
+            draftAgent,
+            multiDraftGenerator,
+            evaluatorAgent,
+            rewriteAgent
+        );
         const writingAssistantService = new WritingAssistantService(
             llmClient,
             projectContextService,

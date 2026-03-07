@@ -205,6 +205,11 @@
         "icon": "$(edit)"
       },
       {
+        "command": "noveler.generate.fullChapter",
+        "title": "Noveler: 一键生成完整章节",
+        "icon": "$(rocket)"
+      },
+      {
         "command": "noveler.openAIAssistant",
         "title": "Noveler: 打开 AI 写作助手",
         "icon": "$(wand)"
@@ -297,6 +302,11 @@
           "command": "noveler.ai.test",
           "when": "editorLangId == markdown",
           "group": "noveler@7"
+        },
+        {
+          "command": "noveler.generate.fullChapter",
+          "when": "editorLangId == markdown",
+          "group": "noveler@8"
         }
       ],
       "view/item/context": [

@@ -2,9 +2,14 @@ import * as http from 'http';
 import * as https from 'https';
 import { URL } from 'url';
 import { Logger } from '../utils/logger';
-import { ChatCompletionResponse, LLMConfig, LLMMessage, ModelOptions } from './types';
+import { LLMConfig, LLMMessage, ModelOptions } from './types';
+import { ResponseParser } from './ResponseParser';
 
 export class LLMClient {
+    private readonly responseParser = new ResponseParser((error, data) => {
+        Logger.warn('[AI] 解析流式响应片段失败', error, data);
+    });
+
     public constructor(
         private readonly getConfig: () => LLMConfig | undefined
     ) {}
@@ -48,7 +53,9 @@ export class LLMClient {
             options?.timeoutMs ?? config.timeoutMs ?? 60000,
             options?.onToken
         );
-        return payload.stream ? this.parseStreamingResponse(raw) : this.parseJsonResponse(raw);
+        return payload.stream
+            ? this.responseParser.parseStreamingResponse(raw)
+            : this.responseParser.parseJsonResponse(raw);
     }
 
     private resolveEndpoint(baseUrl: string): URL {
@@ -98,19 +105,10 @@ export class LLMClient {
                             }
 
                             const data = line.slice('data: '.length);
-                            if (data === '[DONE]') {
-                                continue;
-                            }
-
-                            try {
-                                const parsed = JSON.parse(data) as ChatCompletionResponse;
-                                const token = parsed.choices?.[0]?.delta?.content;
-                                if (token) {
-                                    streamedText += token;
-                                    onToken(token, streamedText);
-                                }
-                            } catch (error) {
-                                Logger.warn('[AI] 解析流式响应片段失败', error, data);
+                            const token = this.responseParser.parseStreamingDataLine(data);
+                            if (token) {
+                                streamedText += token;
+                                onToken(token, streamedText);
                             }
                         }
                     }
@@ -135,55 +133,5 @@ export class LLMClient {
             req.write(body);
             req.end();
         });
-    }
-
-    private parseJsonResponse(raw: string): string {
-        const parsed = JSON.parse(raw) as ChatCompletionResponse;
-        if (parsed.error?.message) {
-            throw new Error(parsed.error.message);
-        }
-
-        const content = parsed.choices?.[0]?.message?.content;
-        if (typeof content === 'string') {
-            return content.trim();
-        }
-
-        if (Array.isArray(content)) {
-            return content.map((item) => item.text ?? '').join('').trim();
-        }
-
-        throw new Error('LLM 返回中缺少文本内容');
-    }
-
-    private parseStreamingResponse(raw: string): string {
-        const lines = raw
-            .split('\n')
-            .map((line) => line.trim())
-            .filter((line) => line.startsWith('data: '));
-
-        const chunks: string[] = [];
-        for (const line of lines) {
-            const data = line.slice('data: '.length);
-            if (data === '[DONE]') {
-                continue;
-            }
-
-            try {
-                const parsed = JSON.parse(data) as ChatCompletionResponse;
-                const chunk = parsed.choices?.[0]?.delta?.content;
-                if (chunk) {
-                    chunks.push(chunk);
-                }
-            } catch (error) {
-                Logger.warn('[AI] 解析流式响应片段失败', error, data);
-            }
-        }
-
-        const content = chunks.join('').trim();
-        if (!content) {
-            throw new Error('流式响应中未解析到内容');
-        }
-
-        return content;
     }
 }

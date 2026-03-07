@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { WritingAssistantTarget } from '../ai/WritingAssistantService';
+import { truncatePreviewContent } from './AIPreviewTruncator';
 
 interface PreviewSession {
     uri: string;
@@ -8,6 +9,7 @@ interface PreviewSession {
     previewLength: number;
     originalText: string;
     prefix: string;
+    fullContent: string;
 }
 
 export interface InlinePreviewSnapshot {
@@ -54,7 +56,9 @@ export class AIInlinePreviewService implements vscode.Disposable {
         const document = editor.document;
         const start = document.positionAt(this.session.startOffset);
         const end = document.positionAt(this.session.startOffset + this.session.previewLength);
-        const replacement = `${this.session.prefix}${content}`;
+        this.session.fullContent = content;
+        const previewContent = truncatePreviewContent(content);
+        const replacement = `${this.session.prefix}${previewContent}`;
 
         await editor.edit((editBuilder) => {
             editBuilder.replace(new vscode.Range(start, end), replacement);
@@ -73,7 +77,7 @@ export class AIInlinePreviewService implements vscode.Disposable {
         const document = activeEditor.document;
         const start = document.positionAt(this.session.startOffset);
         const end = document.positionAt(this.session.startOffset + this.session.previewLength);
-        const finalContent = document.getText(new vscode.Range(start, end)).replace(this.session.prefix, '');
+        const finalContent = this.session.fullContent;
 
         await activeEditor.edit((editBuilder) => {
             editBuilder.replace(new vscode.Range(start, end), finalContent);
@@ -122,7 +126,7 @@ export class AIInlinePreviewService implements vscode.Disposable {
 
         return {
             originalText: this.session.originalText,
-            previewText: current,
+            previewText: this.session.fullContent || current,
             target: this.session.target
         };
     }
@@ -170,7 +174,8 @@ export class AIInlinePreviewService implements vscode.Disposable {
             startOffset,
             previewLength: prefix.length,
             originalText,
-            prefix
+            prefix,
+            fullContent: ''
         };
         this.applyDecoration(editor);
     }
