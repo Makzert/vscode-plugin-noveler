@@ -63,4 +63,86 @@ suite('AgentOrchestrator Test Suite', () => {
         assert.strictEqual(result.rewritten, true);
         assert.strictEqual(result.candidates.length, 3);
     });
+
+    test('should sanitize thinking leak from candidates and rewritten output', async () => {
+        const orchestrator = new AgentOrchestrator(
+            { generateOutline: async () => 'outline-from-topic' } as unknown as OutlineAgent,
+            { generateDraft: async () => '<think>draft-analysis</think>fallback-draft' } as unknown as DraftAgent,
+            {
+                generateCandidates: async () => [
+                    '<think>candidate-analysis</think>candidate-1',
+                    'candidate-2'
+                ]
+            } as unknown as MultiDraftGenerator,
+            {
+                evaluateDrafts: async () => ({
+                    bestIndex: 0,
+                    scores: [
+                        { coherence: 90, emotionalTension: 90, characterPortrayal: 90, readability: 90, total: 90 },
+                        { coherence: 80, emotionalTension: 80, characterPortrayal: 80, readability: 80, total: 80 }
+                    ]
+                })
+            } as unknown as EvaluatorAgent,
+            {
+                rewriteDraft: async () => [
+                    'nk>',
+                    '用户给了很长的一大段内容，看起来是一个小说创作的指导说明和修改要求。',
+                    '输出要求：',
+                    '1. 保留核心剧情事实，不改动关键设定。',
+                    '</think>'
+                ].join('\n')
+            } as unknown as RewriteAgent
+        );
+
+        const result = await orchestrator.generateFullChapter({
+            outline: 'given-outline',
+            chapterTitle: '边城初战',
+            candidateCount: 2,
+            rewriteMode: 'unifyStyle'
+        });
+
+        assert.deepStrictEqual(result.candidates, ['candidate-1', 'candidate-2']);
+        assert.strictEqual(result.bestDraft, 'candidate-1');
+        assert.strictEqual(result.finalDraft, 'candidate-1');
+        assert.strictEqual(result.rewritten, false);
+    });
+
+    test('should fallback when rewritten output is pure analysis text without think tags', async () => {
+        const orchestrator = new AgentOrchestrator(
+            { generateOutline: async () => 'outline-from-topic' } as unknown as OutlineAgent,
+            { generateDraft: async () => 'fallback-draft' } as unknown as DraftAgent,
+            {
+                generateCandidates: async () => ['candidate-1', 'candidate-2']
+            } as unknown as MultiDraftGenerator,
+            {
+                evaluateDrafts: async () => ({
+                    bestIndex: 0,
+                    scores: [
+                        { coherence: 90, emotionalTension: 90, characterPortrayal: 90, readability: 90, total: 90 },
+                        { coherence: 80, emotionalTension: 80, characterPortrayal: 80, readability: 80, total: 80 }
+                    ]
+                })
+            } as unknown as EvaluatorAgent,
+            {
+                rewriteDraft: async () => [
+                    '用户给了很长的一大段内容，看起来是一个小说创作的指导说明和修改要求。',
+                    '输出要求：',
+                    '1. 保留核心剧情事实，不改动关键设定。',
+                    '2. 维持叙事连续性与人物一致性。',
+                    '3. 只返回正文。'
+                ].join('\n')
+            } as unknown as RewriteAgent
+        );
+
+        const result = await orchestrator.generateFullChapter({
+            outline: 'given-outline',
+            chapterTitle: '边城初战',
+            candidateCount: 2,
+            rewriteMode: 'unifyStyle'
+        });
+
+        assert.strictEqual(result.bestDraft, 'candidate-1');
+        assert.strictEqual(result.finalDraft, 'candidate-1');
+        assert.strictEqual(result.rewritten, false);
+    });
 });

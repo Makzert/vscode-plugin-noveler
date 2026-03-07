@@ -210,6 +210,11 @@
         "icon": "$(rocket)"
       },
       {
+        "command": "noveler.generate.fullNovel",
+        "title": "Noveler: 全自动生成整本小说",
+        "icon": "$(symbol-class)"
+      },
+      {
         "command": "noveler.openAIAssistant",
         "title": "Noveler: 打开 AI 写作助手",
         "icon": "$(wand)"
@@ -307,6 +312,11 @@
           "command": "noveler.generate.fullChapter",
           "when": "editorLangId == markdown",
           "group": "noveler@8"
+        },
+        {
+          "command": "noveler.generate.fullNovel",
+          "when": "editorLangId == markdown",
+          "group": "noveler@9"
         }
       ],
       "view/item/context": [

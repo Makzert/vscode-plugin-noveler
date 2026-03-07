@@ -55,6 +55,7 @@ import { runAITestCommand } from './aiTestCommand';
 import { generateOutlineCommand } from './generateOutlineCommand';
 import { generateChapterDraftCommand } from './generateChapterDraftCommand';
 import { generateFullChapterCommand } from './generateFullChapterCommand';
+import { generateFullNovelCommand } from './generateFullNovelCommand';
 import { CharacterSyncService } from '../services/characterSyncService';
 
 /**
@@ -379,6 +380,12 @@ function registerAICommands(deps: CommandRegistrarDeps): void {
     context.subscriptions.push(
         vscode.commands.registerCommand('noveler.generate.fullChapter', async () => {
             await generateFullChapterCommand(agentOrchestrator);
+        })
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand('noveler.generate.fullNovel', async () => {
+            await generateFullNovelCommand(llmClient, agentOrchestrator);
         })
     );
 

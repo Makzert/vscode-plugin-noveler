@@ -3,6 +3,7 @@ import { EvaluatorAgent } from '../agents/EvaluatorAgent';
 import { MultiDraftGenerator } from '../agents/MultiDraftGenerator';
 import { OutlineAgent } from '../agents/OutlineAgent';
 import { RewriteAgent } from '../agents/RewriteAgent';
+import { AIResponseSanitizer } from '../ai/AIResponseSanitizer';
 import { ChapterPipeline } from '../pipeline/ChapterPipeline';
 import { StyleProfile } from '../style/StyleProfile';
 import { EvaluationEngine } from './EvaluationEngine';
@@ -47,6 +48,7 @@ export class AgentOrchestrator {
     private readonly chapterPipeline: ChapterPipeline;
     private readonly evaluationEngine: EvaluationEngine;
     private readonly taskQueue: TaskQueue;
+    private readonly responseSanitizer: AIResponseSanitizer;
 
     public constructor(
         private readonly outlineAgent: OutlineAgent,
@@ -56,11 +58,13 @@ export class AgentOrchestrator {
         private readonly rewriteAgent?: RewriteAgent,
         chapterPipeline?: ChapterPipeline,
         evaluationEngine?: EvaluationEngine,
-        taskQueue?: TaskQueue
+        taskQueue?: TaskQueue,
+        responseSanitizer?: AIResponseSanitizer
     ) {
         this.chapterPipeline = chapterPipeline ?? new ChapterPipeline();
         this.evaluationEngine = evaluationEngine ?? new EvaluationEngine(this.evaluatorAgent);
         this.taskQueue = taskQueue ?? new TaskQueue(1);
+        this.responseSanitizer = responseSanitizer ?? new AIResponseSanitizer();
     }
 
     public async createOutline(topic: string): Promise<string> {
@@ -68,7 +72,8 @@ export class AgentOrchestrator {
     }
 
     public async createChapterDraft(outline: string, chapterTitle: string): Promise<string> {
-        return this.draftAgent.generateDraft(outline, chapterTitle);
+        const raw = await this.draftAgent.generateDraft(outline, chapterTitle);
+        return this.sanitizeGeneratedProse(raw, chapterTitle) || raw.trim();
     }
 
     public async generateMultiDraftCandidates(
@@ -81,6 +86,8 @@ export class AgentOrchestrator {
         if (this.multiDraftGenerator) {
             const generated = await this.multiDraftGenerator.generateCandidates(outline, chapterTitle, count);
             const normalized = generated
+                .map((item) => this.sanitizeGeneratedProse(item, chapterTitle))
+                .filter((item) => item.length > 0)
                 .map((item) => item.trim())
                 .filter((item) => item.length > 0);
             if (normalized.length > 0) {
@@ -93,6 +100,8 @@ export class AgentOrchestrator {
         );
 
         return drafts
+            .map((item) => this.sanitizeGeneratedProse(item, chapterTitle))
+            .filter((item) => item.length > 0)
             .map((item) => item.trim())
             .filter((item) => item.length > 0);
     }
@@ -144,7 +153,8 @@ export class AgentOrchestrator {
             styleProfile: options.styleProfile
         });
 
-        return rewritten.trim() || draft.trim();
+        const sanitized = this.sanitizeGeneratedProse(rewritten, options.chapterTitle);
+        return sanitized || draft.trim();
     }
 
     public async generateFullChapter(request: FullChapterRequest): Promise<FullChapterResult> {
@@ -175,5 +185,35 @@ export class AgentOrchestrator {
             return 0;
         }
         return Math.floor(index);
+    }
+
+    private sanitizeGeneratedProse(raw: string, chapterTitle: string): string {
+        const sanitized = this.responseSanitizer.sanitize(raw, {
+            chapterTitle,
+            mode: 'prose'
+        }).content.trim();
+
+        if (this.looksLikeLeakedReasoning(sanitized)) {
+            return '';
+        }
+
+        return sanitized;
+    }
+
+    private looksLikeLeakedReasoning(content: string): boolean {
+        const normalized = content.trim();
+        if (!normalized) {
+            return false;
+        }
+
+        if (/^(?:<\/?(?:think|thinking)|nk)>/i.test(normalized)) {
+            return true;
+        }
+
+        if (/(?:^|\n)输出要求：\s*1\./.test(normalized) && /用户(?:消息|给了)/.test(normalized)) {
+            return true;
+        }
+
+        return false;
     }
 }

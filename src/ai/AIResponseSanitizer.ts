@@ -79,6 +79,9 @@ export class AIResponseSanitizer {
         let result = content;
         const before = result;
         result = result.replace(/<(think|thinking)[^>]*>[\s\S]*?<\/\1>/gi, '').trim();
+        result = result.replace(/<(think|thinking)[^>]*>[\s\S]*$/gi, '').trim();
+        result = result.replace(/<\/(think|thinking)\s*>/gi, '').trim();
+        result = result.replace(/^(?:<\/?(?:think|thinking)|\/?(?:think|thinking)|nk)>+\s*/i, '').trim();
         result = result.replace(/```(?:thinking|analysis)[\s\S]*?```/gi, '').trim();
         if (result !== before) {
             warnings.push('已移除模型返回中的思考/分析片段。');
