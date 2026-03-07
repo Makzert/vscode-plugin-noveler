@@ -2,6 +2,8 @@ import { PromptBuilder } from '../ai/PromptBuilder';
 import { MCPServer } from '../mcp/MCPServer';
 import { GenerateTextToolInput } from '../mcp/types';
 
+const FULL_CHAPTER_TIMEOUT_MS = 180000;
+
 export interface DraftDimensionScore {
     coherence: number;
     emotionalTension: number;
@@ -50,7 +52,8 @@ export class EvaluatorAgent {
         const raw = await this.mcpServer.callTool<string>('generate_text', {
             system: prompt.systemPrompt ?? '',
             prompt: prompt.userPrompt,
-            temperature: 0.2
+            temperature: 0.2,
+            timeoutMs: FULL_CHAPTER_TIMEOUT_MS
         } satisfies GenerateTextToolInput);
 
         return this.parseResult(raw, drafts.length);

@@ -50,7 +50,7 @@ export class LLMClient {
             endpoint,
             payload,
             config.apiKey,
-            options?.timeoutMs ?? config.timeoutMs ?? 60000,
+            options?.timeoutMs ?? config.timeoutMs ?? 180000,
             options?.onToken
         );
         return payload.stream

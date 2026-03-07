@@ -2,6 +2,8 @@ import { PromptBuilder } from '../ai/PromptBuilder';
 import { MCPServer } from '../mcp/MCPServer';
 import { GenerateTextToolInput } from '../mcp/types';
 
+const FULL_CHAPTER_TIMEOUT_MS = 180000;
+
 export class MultiDraftGenerator {
     public constructor(
         private readonly mcpServer: MCPServer,
@@ -30,7 +32,8 @@ export class MultiDraftGenerator {
             tasks.push(this.mcpServer.callTool<string>('generate_text', {
                 system: built.systemPrompt ?? '',
                 prompt: built.userPrompt,
-                temperature: 0.9
+                temperature: 0.9,
+                timeoutMs: FULL_CHAPTER_TIMEOUT_MS
             } satisfies GenerateTextToolInput));
         }
 

@@ -406,7 +406,7 @@ suite('ConfigValidator Test Suite', () => {
                 assert.strictEqual(fixed.ai!.model, 'gpt-4.1-mini');
                 assert.strictEqual(fixed.ai!.temperature, 0.8);
                 assert.strictEqual(fixed.ai!.maxTokens, 4000);
-                assert.strictEqual(fixed.ai!.timeoutMs, 60000);
+                assert.strictEqual(fixed.ai!.timeoutMs, 180000);
             });
         });
 

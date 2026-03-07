@@ -223,7 +223,7 @@ export function fixConfig(config: NovelConfig): NovelConfig {
             fixed.ai.maxTokens = 4000;
         }
         if (typeof fixed.ai.timeoutMs !== 'number' || fixed.ai.timeoutMs <= 0) {
-            fixed.ai.timeoutMs = 60000;
+            fixed.ai.timeoutMs = 180000;
         }
     }
 

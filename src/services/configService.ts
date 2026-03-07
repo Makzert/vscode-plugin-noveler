@@ -294,7 +294,7 @@ export class ConfigService {
                 model: process.env.NOVELER_OPENAI_MODEL || 'gpt-4.1-mini',
                 temperature: 0.8,
                 maxTokens: 4000,
-                timeoutMs: 60000
+                timeoutMs: 180000
             },
             characters: {
                 list: []
@@ -436,7 +436,7 @@ export class ConfigService {
             models: this.config.ai?.models,
             temperature: this.config.ai?.temperature ?? 0.8,
             maxTokens: this.config.ai?.maxTokens ?? 4000,
-            timeoutMs: this.config.ai?.timeoutMs ?? 60000
+            timeoutMs: this.config.ai?.timeoutMs ?? 180000
         };
     }
 

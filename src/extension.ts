@@ -99,7 +99,8 @@ export async function activate(context: vscode.ExtensionContext) {
                     system: { type: 'string' },
                     prompt: { type: 'string' },
                     temperature: { type: 'number' },
-                    maxTokens: { type: 'number' }
+                    maxTokens: { type: 'number' },
+                    timeoutMs: { type: 'number' }
                 },
                 required: ['system', 'prompt']
             },
@@ -109,6 +110,7 @@ export async function activate(context: vscode.ExtensionContext) {
                     prompt?: string;
                     temperature?: number;
                     maxTokens?: number;
+                    timeoutMs?: number;
                 };
 
                 if (!input.prompt) {
@@ -118,7 +120,8 @@ export async function activate(context: vscode.ExtensionContext) {
                 return llmClient.generate(input.prompt, {
                     systemPrompt: input.system,
                     temperature: input.temperature,
-                    maxTokens: input.maxTokens
+                    maxTokens: input.maxTokens,
+                    timeoutMs: input.timeoutMs
                 });
             }
         });

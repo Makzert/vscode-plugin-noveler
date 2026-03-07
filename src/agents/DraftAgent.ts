@@ -3,6 +3,8 @@ import { ProjectContextService } from '../context/ProjectContextService';
 import { MCPServer } from '../mcp/MCPServer';
 import { GenerateTextToolInput } from '../mcp/types';
 
+const FULL_CHAPTER_TIMEOUT_MS = 180000;
+
 export class DraftAgent {
     public constructor(
         private readonly mcpServer: MCPServer,
@@ -78,7 +80,8 @@ export class DraftAgent {
         return this.mcpServer.callTool<string>('generate_text', {
             system: prompt.systemPrompt ?? '',
             prompt: prompt.userPrompt,
-            temperature: 0.85
+            temperature: 0.85,
+            timeoutMs: FULL_CHAPTER_TIMEOUT_MS
         } satisfies GenerateTextToolInput);
     }
 }

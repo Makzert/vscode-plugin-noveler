@@ -27,4 +27,5 @@ export interface GenerateTextToolInput {
     prompt: string;
     temperature?: number;
     maxTokens?: number;
+    timeoutMs?: number;
 }

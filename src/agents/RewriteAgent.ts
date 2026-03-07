@@ -4,6 +4,7 @@ import { GenerateTextToolInput } from '../mcp/types';
 import { StyleProfile, buildStyleProfilePrompt } from '../style/StyleProfile';
 
 export type RewriteMode = 'trim' | 'emotion' | 'tension' | 'unifyStyle';
+const FULL_CHAPTER_TIMEOUT_MS = 180000;
 
 export interface RewriteDraftOptions {
     mode: RewriteMode;
@@ -49,7 +50,8 @@ export class RewriteAgent {
         return this.mcpServer.callTool<string>('generate_text', {
             system: prompt.systemPrompt ?? '',
             prompt: prompt.userPrompt,
-            temperature: 0.65
+            temperature: 0.65,
+            timeoutMs: FULL_CHAPTER_TIMEOUT_MS
         } satisfies GenerateTextToolInput);
     }
 
